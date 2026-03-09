@@ -1,11 +1,11 @@
-import React from 'react';
-import {StatusBar} from 'react-native'; // Add this
-import {NavigationContainer} from '@react-navigation/native';
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import {GestureHandlerRootView} from 'react-native-gesture-handler';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {StyleSheet} from 'react-native';
+import React, { useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
 import RootNavigator from './src/app/navigation/RootNavigator';
+import { playerService } from './src/features/player/service/playerService';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,14 +18,14 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  useEffect(() => {
+    // Initialize audio player on app start
+    playerService.setup().catch(console.error);
+  }, []);
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor="transparent"
-          translucent
-        />
         <QueryClientProvider client={queryClient}>
           <NavigationContainer>
             <RootNavigator />
@@ -36,4 +36,4 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({root: {flex: 1}});
+const styles = StyleSheet.create({ root: { flex: 1 } });

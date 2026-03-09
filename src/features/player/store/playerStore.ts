@@ -29,34 +29,57 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   queue: [],
   queueIndex: 0,
 
-  play: (station) => set({
-    currentStation: station,
-    status: 'loading',
-  }),
+  play: (station: Station) => {
+    set({ currentStation: station, status: 'loading' });
+    // Import lazily to avoid circular dependency
+    import('../service/playerService').then(({ playerService }) => {
+      playerService.play(station);
+    });
+  },
 
-  pause: () => set({ status: 'paused' }),
+  pause: () => {
+    import('../service/playerService').then(({ playerService }) => {
+      playerService.pause();
+    });
+  },
 
-  resume: () => set({ status: 'playing' }),
+  resume: () => {
+    import('../service/playerService').then(({ playerService }) => {
+      playerService.resume();
+    });
+  },
 
-  stop: () => set({
-    currentStation: null,
-    status: 'idle',
-  }),
+  stop: () => {
+    import('../service/playerService').then(({ playerService }) => {
+      playerService.stop();
+    });
+    set({ currentStation: null, status: 'idle' });
+  },
 
   setStatus: (status) => set({ status }),
 
-  setQueue: (stations, startIndex = 0) => set({
-    queue: stations,
-    queueIndex: startIndex,
-    currentStation: stations[startIndex] ?? null,
-    status: 'loading',
-  }),
+  setQueue: (stations, startIndex = 0) => {
+    set({
+      queue: stations,
+      queueIndex: startIndex,
+      currentStation: stations[startIndex] ?? null,
+      status: 'loading',
+    });
+    if (stations[startIndex]) {
+      import('../service/playerService').then(({ playerService }) => {
+        playerService.play(stations[startIndex]);
+      });
+    }
+  },
 
   next: () => {
     const { queue, queueIndex } = get();
     const nextIndex = queueIndex + 1;
     if (nextIndex < queue.length) {
       set({ queueIndex: nextIndex, currentStation: queue[nextIndex], status: 'loading' });
+      import('../service/playerService').then(({ playerService }) => {
+        playerService.play(queue[nextIndex]);
+      });
     }
   },
 
@@ -65,17 +88,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const prevIndex = queueIndex - 1;
     if (prevIndex >= 0) {
       set({ queueIndex: prevIndex, currentStation: queue[prevIndex], status: 'loading' });
+      import('../service/playerService').then(({ playerService }) => {
+        playerService.play(queue[prevIndex]);
+      });
     }
   },
 
   setVolume: (volume) => set({ volume }),
 }));
 
-// Selector hooks — use these to avoid unnecessary re-renders
+// ─── Stable selector hooks ────────────────────────────────────────
+// Always use these instead of subscribing to full store
 export const useCurrentStation = () => usePlayerStore(s => s.currentStation);
-export const usePlayerStatus  = () => usePlayerStore(s => s.status);
-export const useIsPlaying     = () => usePlayerStore(s => s.status === 'playing');
-export const usePlayerActions = () => usePlayerStore(s => ({
-  play: s.play, pause: s.pause, resume: s.resume,
-  stop: s.stop, next: s.next, previous: s.previous,
-}));
+export const usePlayerStatus   = () => usePlayerStore(s => s.status);
+export const useIsPlaying      = () => usePlayerStore(s => s.status === 'playing');
+export const useIsLoading      = () => usePlayerStore(s => s.status === 'loading');
+export const usePlayerActions  = () => {
+  const play     = usePlayerStore(s => s.play);
+  const pause    = usePlayerStore(s => s.pause);
+  const resume   = usePlayerStore(s => s.resume);
+  const stop     = usePlayerStore(s => s.stop);
+  const next     = usePlayerStore(s => s.next);
+  const previous = usePlayerStore(s => s.previous);
+  return { play, pause, resume, stop, next, previous };
+};
